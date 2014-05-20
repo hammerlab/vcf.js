@@ -1,11 +1,13 @@
 (function() {
+"use strict";
 
-// Example Usage:
-//
-// vcf().data("variants.vcf", function(vcf) {
-//     window.data = vcf.data();
-//     window.header = vcf.header();
-// });
+if (typeof _ === 'function') {
+  // pass
+} else if (typeof require === 'function') {
+  _ = require('underscore');
+} else {
+  throw Error("Cannot find or require underscore.js");
+}
 
 
 // TODO(ihodes): Add function that appends 1 to N more VCF records send from
@@ -24,7 +26,7 @@ var DEFAULT_TYPE = 'vcf';
 
 // Console prints messages when deriving undefined types.
 // TODO(ihodes): enable setting this.
-var WARN = true;
+var WARN = false;
 
 // VCF values can be comma-separated lists, so here we want to convert them into
 // lists of the proper type, else return the singleton value of that type. All
@@ -110,14 +112,26 @@ function parseHeaderLines(lines) {
   //
   // `lines` - an array of header strings (stripped of "##").
   return _.reduce(lines, function(headers, line) {
-    var re = /<(.*)>/;
-    var kvs = _.map(re.exec(line)[1].split(','), function(kv) {
+    var specRe = /<(.*)>/,
+        descriptionRe = /.*?(Description="(.*?)",?).*?/,
+        spec = specRe.exec(line)[1],
+        description = descriptionRe.exec(spec)[2];
+
+    spec = spec.replace(/Description=".*?",?/, '');
+    window.s = spec;
+    var kvs = _.map(spec.split(','), function(kv) {
       return kv.split('=');
     });
+
+    if (description)  kvs.push(['Description', description]);
+
     headers.push(_.reduce(kvs, function(acc, kv){
       var val = kv[1],
-      key = kv[0];
-      if (key === 'Number')  val = parseInt(val);
+          key = kv[0];
+      if (key.length <= 0)  return acc;
+
+      if (val === '.')  val = null;
+      else if (key === 'Number')  val = parseInt(val);
       acc[key] = val;
       return acc;
     }, {}))
@@ -127,8 +141,8 @@ function parseHeaderLines(lines) {
 
 function parseVCFVersion(headers) {
   // Returns the version of the VCF file. Hacky.
-  // TODO(ihodes): Is this necessary? Does e.g. 4.0 work, too?
-  if (headers[0].split('=')[1] != 'VCFv4.1') {
+  var version = headers[0].split('=')[1];
+  if (version != 'VCFv4.1' && version != 'VCFv4.0') {
     throw Error("VCF version must be 4.1.");
   }
   return '4.1';
@@ -315,50 +329,28 @@ function parseData(text, type) {
   return {data: data, header: header}
 }
 
+
 function vcf() {
 
   var data = {},
       header = [];
 
   function vfc() {
-    vcf.header(); // { columns: ["CHROM", "POS", ... ] }
-    vcf.data(); // [ { CHROM: "20", POS: 120355, REF: "T", ... }, ... ]
     return vcf;
   }
 
-  vcf.header = function(_) {
+  vcf.header = function() {
     return header;
   };
 
-  vcf.data = function(url, callback, opts) {
-    if (!arguments.length) return data;
-    var type, result;
-    if (opts && opts.type) {
-      type = opts.type;
-    }
-    if (opts && opts.sync) { // Then this is a synchronous setting of `data`.
-      result = parseData(url, type || DEFAULT_TYPE)
-      data = result.data;
-      header = result.header;
-      return vcf;
-    }
+  vcf.data = function(text, type) {
+    if (!arguments.length)  return data;
 
-    var request = new XMLHttpRequest();
-    request.open('GET', url, true);
-    request.send(null)
-    request.onreadystatechange = function() {
-      // TODO(ihodes): catch errors more better and such etc.
-      if (request.readyState == 4) {
-        var ext = url.split('.'),
-        ext = ext[ext.length-1].toLowerCase();
-        result = parseData(request.responseText, type || ext || DEFAULT_TYPE);
-        data = result.data;
-        header = result.header;
-        callback(vcf);
-      }
-    };
+    var result = parseData(text, type || DEFAULT_TYPE);
+    data = result.data;
+    header = result.header;
     return vcf;
-  }
+  };
 
   return vcf;
 }
@@ -368,7 +360,7 @@ if (typeof define === "function" && define.amd) {
 } else if (typeof module === "object" && module.exports) {
   module.exports = vcf;
 } else {
-  this.vcf = vcf;
+  window.vcf = vcf;
 }
 
 })();

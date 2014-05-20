@@ -1,0 +1,32 @@
+{
+  "name": "vcf.js",
+  "version": "0.1.0",
+  "description": "A VCF parser and variant record model in JavaScript.",
+  "main": "vcf.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "make test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/ihodes/vcf.js.git"
+  },
+  "keywords": [
+    "vcf",
+    "bigdatagenomics",
+    "genomics",
+    "variant-calling",
+    "variants"
+  ],
+  "dependencies": {
+      "underscore": ">=1.6"
+  },
+  "author": "Isaac Hodes",
+  "license": "Apache License, Version 2.0",
+  "bugs": {
+    "url": "https://github.com/ihodes/vcf.js/issues"
+  },
+  "homepage": "https://github.com/ihodes/vcf.js"
+}

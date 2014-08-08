@@ -13,6 +13,7 @@ Example usage in `test/` directory, just start a server in the root directory
 (e.g. `python -m SimpleHTTPServer`) and open `index.html`, then open a dev
 console and look at the `data` object, for example.
 
+[![](https://nodei.co/npm/vcf.js.png)]((https://nodei.co/npm/loch/))
 
 ### TODO
 1. Make sure this works seamlessly client-side and in the browser, and plays

@@ -24,6 +24,8 @@ var NUM_STANDARD_HEADER_COLUMNS = 9;
 // The default format of text we're parsing. Can be VCF or JSON.
 var DEFAULT_TYPE = 'vcf';
 
+var BASES = ['A', 'C', 'T', 'G'];
+
 // Console prints messages when deriving undefined types.
 // TODO(ihodes): enable setting this.
 var WARN = false;
@@ -281,6 +283,42 @@ function Record(line, header) {
       record[sampleName] = parseSample(sample, record.FORMAT, header);
     }
   });
+
+  record.variantType = function() {
+    if (record.isSnv()) return 'SNV';
+    if (record.isIndel()) return record.isDeletion() ? 'DELETION' : 'INSERTION';
+    if (record.isCnv()) return 'CNV';
+    return null;
+  }
+
+  record.isSnv = function() {
+    var isSnv = true;
+    if (record.REF && record.REF.length > 1) isSnv = false;
+    _.each(record.ALT, function(alt) {
+      if (alt && !_.contains(BASES, alt)) isSnv = false;
+    });
+    return isSnv;
+  }
+
+  record.isSv = function() {
+    throw {name: 'NotImplemented', message: 'Method not yet implemented.'};
+  }
+
+  record.isCnv = function() {
+    throw {name: 'NotImplemented', message: 'Method not yet implemented.'};
+  }
+
+  record.isIndel = function() {
+    return record.isDeletion() || record.isInsertion();
+  }
+
+  record.isDeletion = function() {
+    throw {name: 'NotImplemented', message: 'Method not yet implemented.'};
+  }
+
+  record.isInsertion = function() {
+    throw {name: 'NotImplemented', message: 'Method not yet implemented.'};
+  }
 
   return record;
 }

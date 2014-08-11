@@ -373,24 +373,24 @@ function vcf() {
   var data = {},
       header = [];
 
-  function vfc() {
-    return vcf;
+  var vfc_ = function() {
+    return this;
   }
 
-  vcf.header = function() {
+  vcf_.header = function() {
     return header;
   };
 
-  vcf.data = function(text, type) {
+  vcf_.data = function(text, type) {
     if (!arguments.length)  return data;
 
     var result = parseData(text, type || DEFAULT_TYPE);
     data = result.data;
     header = result.header;
-    return vcf;
+    return vcf_;
   };
 
-  return vcf;
+  return vcf_;
 }
 
 if (typeof define === "function" && define.amd) {

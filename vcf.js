@@ -42,8 +42,8 @@ function maybeMapOverVal(fn, val) {
   return val == '.' ? null : fn(val);
 }
 
-// Set radix to 10 to prevent problems in stangley-formed VCFs. Otherwise we may
-// end up parsing octal, for example.
+// Set radix to 10 to prevent problems in strangley-formed VCFs. Otherwise we
+// may end up parsing octal, for example.
 // c.f. http://stackoverflow.com/questions/7818903/jslint-says-missing-radix-parameter-what-should-i-do
 var _parseInt = function(i) { return parseInt(i, 10); };
 
@@ -195,9 +195,9 @@ function parseInfo(info, header) {
   return _.reduce(info.split(';'), function(acc, kv) {
     kv = kv.split('=')
     var key = kv[0],
-    val = kv[1],
-    headerSpec = _.findWhere(header.info, {ID: key}),
-    type;
+        val = kv[1],
+        headerSpec = _.findWhere(header.info, {ID: key}),
+        type;
 
     if (headerSpec && headerSpec.Type) {
       type = headerSpec.Type;
@@ -286,9 +286,9 @@ function Record(line, header) {
 
   record.variantType = function() {
     if (record.isSnv()) return 'SNV';
+    if (record.isSv()) return 'SV';
     if (record.isIndel()) return record.isDeletion() ? 'DELETION' : 'INSERTION';
-    if (record.isCnv()) return 'CNV';
-    return null;
+    return 'UNKNOWN';
   }
 
   record.isSnv = function() {
@@ -301,11 +301,13 @@ function Record(line, header) {
   }
 
   record.isSv = function() {
-    throw {name: 'NotImplemented', message: 'Method not yet implemented.'};
+    if (record.INFO && record.INFO.SVTYPE) return true;
+    return false;
   }
 
   record.isCnv = function() {
-    throw {name: 'NotImplemented', message: 'Method not yet implemented.'};
+    if (record.INFO && record.INFO.SVTYPE === 'CNV') return true;
+    return false;
   }
 
   record.isIndel = function() {
@@ -313,11 +315,20 @@ function Record(line, header) {
   }
 
   record.isDeletion = function() {
-    throw {name: 'NotImplemented', message: 'Method not yet implemented.'};
+    if (record.isSv()) return false;
+    if (record.ALT && record.ALT.length > 1) return false;
+    if (record.REF && record.ALT && record.ALT.length <= 1) {
+      if (record.REF.length > record.ALT[0].length) return true;
+    }
+    return false;
   }
 
   record.isInsertion = function() {
-    throw {name: 'NotImplemented', message: 'Method not yet implemented.'};
+    if (record.isSv()) return false;
+    if (record.REF && record.ALT && record.ALT.length >= 1) {
+      if (record.REF.length < record.ALT[0].length) return true;
+    }
+    return false;
   }
 
   return record;
@@ -330,7 +341,11 @@ function parseVCF(text) {
   //    `header` - an object of the metadata parsed from the VCF header.
   //
   // `text` - VCF plaintext.
-  var partitions = _.partition(text.split('\n'), function(line) {
+  var lines = _.reject(text.split('\n'), function(line) {
+    return line === '';
+  })
+
+  var partitions = _.partition(lines, function(line) {
     return line[0] === '#';
   });
 
@@ -388,6 +403,31 @@ function vcf() {
     data = result.data;
     header = result.header;
     return vcf_;
+  };
+  vcf_.fetch = function(chromosome, start, end) {
+    // O(N) time. TODO(ihodes): Add sorted option to get O(lnN),
+    //                          fallback to O(N).
+    return _.filter(data, function(record) {
+      if (chromosome != record.CHROM)
+        return false;
+
+      if (record.POS < end) {
+        if (record.POS >= start)
+          return true;
+        if (record.INFO && record.INFO.END &&
+            record.INFO.END >= start && record.POS < end)
+          return true;
+      }
+      return false;
+    });
+  };
+  vcf_.get = function(idx) {
+    return this.data()[idx];
+  };
+  vcf_.filter = function(fn) {
+    // TODO(ihodes): Should this return a vcf object with new data internally
+    //               instead of a plain array? Not sure I like this API.
+    return _.filter(data, fn);
   };
 
   return vcf_;

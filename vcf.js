@@ -162,36 +162,35 @@ function parseHeadersOf(type, headers) {
   ////////////////////////////////////////////////////////
  // Below: parsing columns of individual VCF records.  //
 ////////////////////////////////////////////////////////
-
-function parseChrom(chrom, header) {
+function _parseChrom(chrom, header) {
   return chrom;
 }
 
-function parsePos(pos, header) {
+function _parsePos(pos, header) {
   return parseInt(pos);
 }
 
-function parseId(id, header) {
+function _parseId(id, header) {
   return id.split(';');
 }
 
-function parseRef(ref, header) {
+function _parseRef(ref, header) {
   return ref;
 }
 
-function parseAlt(alt, header) {
+function _parseAlt(alt, header) {
   return alt.split(',');
 }
 
-function parseQual(qual, header) {
+function _parseQual(qual, header) {
   return parseFloat(qual);
 }
 
-function parseFilter(filters, header) {
+function _parseFilter(filters, header) {
   return filters.split(';');
 }
 
-function parseInfo(info, header) {
+function _parseInfo(info, header) {
   return _.reduce(info.split(';'), function(acc, kv) {
     kv = kv.split('=')
     var key = kv[0],
@@ -215,12 +214,12 @@ function parseInfo(info, header) {
   }, {});
 }
 
-function parseFormat(format, header) {
+function _parseFormat(format, header) {
   // Returns a list of format tags.
   return format.split(':');
 }
 
-function parseSample(sample, format, header) {
+function _parseSample(sample, format, header) {
   sample = sample.split(':');
   return _.reduce(sample, function(sample, val, idx) {
     var key = format[idx],
@@ -245,154 +244,224 @@ function parseSample(sample, format, header) {
   }, {});
 }
 
-
-  //////////////////////////////////////////////////////////////////////
- // Below: initializing Records and parsing their constituent data.  //
-//////////////////////////////////////////////////////////////////////
-
-function initializeRecord(vals, header) {
-  return _.reduce(header.columns, function(record, colname, idx) {
-    // null if val is '.' (VCF null), else the trimmed value.
-    var val = vals[idx] ? vals[idx].trim() : null;
-    record[colname] = val === '.' ? null : val;
-    return record;
-  }, {__header: header});
+function _genKey(record) {
+  return 'chr' + record.CHROM + ':' + record.POS + "(" + record.REF + "->" + record.ALT + ")";
 }
 
-function Record(line, header) {
-  // Returns a VCF record.
-  //
-  // `line` - a line of the VCF file that represents an individual record.
-  // `header` - the parsed VCF header.
-  var vals = line.split('\t'),
-      record = initializeRecord(vals, header);
-
-  if (record.CHROM)   record.CHROM = parseChrom(record.CHROM, header);
-  if (record.POS)     record.POS = parsePos(record.POS, header);
-  if (record.ID)      record.ID = parseId(record.ID, header);
-  if (record.REF)     record.REF = parseRef(record.REF, header);
-  if (record.ALT)     record.ALT = parseAlt(record.ALT, header);
-  if (record.QUAL)    record.QUAL = parseQual(record.QUAL, header);
-  if (record.FILTER)  record.FILTER = parseFilter(record.FILTER, header);
-  if (record.INFO)    record.INFO = parseInfo(record.INFO, header);
-  if (record.FORMAT)  record.FORMAT = parseFormat(record.FORMAT, header);
-
-  record.__KEY__ = 'chr' + record.CHROM + ':' + record.POS + "(" + record.REF + "->" + record.ALT + ")";
-
-  _.each(header.sampleNames, function(sampleName) {
-    var sample = record[sampleName];
-    if (sample) {
-      record[sampleName] = parseSample(sample, record.FORMAT, header);
-    }
-  });
-
-  record.variantType = function() {
-    if (record.isSnv()) return 'SNV';
-    if (record.isSv()) return 'SV';
-    if (record.isIndel()) return record.isDeletion() ? 'DELETION' : 'INSERTION';
-    return 'UNKNOWN';
-  }
-
-  record.isSnv = function() {
-    var isSnv = true;
-    if (record.REF && record.REF.length > 1) isSnv = false;
-    _.each(record.ALT, function(alt) {
-      if (alt && !_.contains(BASES, alt)) isSnv = false;
-    });
-    return isSnv;
-  }
-
-  record.isSv = function() {
-    if (record.INFO && record.INFO.SVTYPE) return true;
-    return false;
-  }
-
-  record.isCnv = function() {
-    if (record.INFO && record.INFO.SVTYPE === 'CNV') return true;
-    return false;
-  }
-
-  record.isIndel = function() {
-    return record.isDeletion() || record.isInsertion();
-  }
-
-  record.isDeletion = function() {
-    if (record.isSv()) return false;
-    if (record.ALT && record.ALT.length > 1) return false;
-    if (record.REF && record.ALT && record.ALT.length <= 1) {
-      if (record.REF.length > record.ALT[0].length) return true;
-    }
-    return false;
-  }
-
-  record.isInsertion = function() {
-    if (record.isSv()) return false;
-    if (record.REF && record.ALT && record.ALT.length >= 1) {
-      if (record.REF.length < record.ALT[0].length) return true;
-    }
-    return false;
-  }
-
-  return record;
-}
-
-
-function parseVCF(text) {
-  // Returns a parsed VCF object, with attributed `data` and `header`.
-  //    `data` - a list of VCF Records.
-  //    `header` - an object of the metadata parsed from the VCF header.
-  //
-  // `text` - VCF plaintext.
-  var lines = _.reject(text.split('\n'), function(line) {
-    return line === '';
-  })
-
-  var partitions = _.partition(lines, function(line) {
-    return line[0] === '#';
-  });
-
-  var header = parseHeader(partitions[0]),
-  data = _.map(partitions[1], function(line) {
-    return new Record(line, header);
-  });
-
-  return {header: header, data: data};
-}
-
-
-
-  ///////////////////////////
- //   Primary VCF.js API  //
-///////////////////////////
-
-function parseData(text, type) {
-  var data, header;
-  type = type.toLowerCase();
-  if (type === 'vcf') {
-    var parsedVcf = parseVCF(text);
-    data = parsedVcf.data;
-    header = parsedVcf.header;
-  } else if (type === 'json') {
-    // TODO(ihodes): Need a spec and correspondance between
-    //               Records and these (add __header -> header,
-    //               etc).
-    data = JSON.parse(text).data;
-    header = JSON.parse(text).header;
-  } else {
-    throw TypeError("Type '" +  type + "' not recognized: use VCF or JSON.");
-  }
-  return {data: data, header: header}
-}
 
 
 function vcf() {
-
   var data = {},
-      header = [];
+      header = [],
+      parseChrom = _parseChrom,
+      parsePos = _parsePos,
+      parseId = _parseId,
+      parseRef = _parseRef,
+      parseAlt = _parseAlt,
+      parseQual = _parseQual,
+      parseFilter = _parseFilter,
+      parseInfo = _parseInfo,
+      parseFormat = _parseFormat,
+      parseSample = _parseSample,
+      genKey = _genKey;
 
-  var vfc_ = function() {
+  var vcf_ = function() {
     return this;
+  };
+
+    //////////////////////////////////////////////////////////////////////
+   // Below: initializing Records and parsing their constituent data.  //
+  //////////////////////////////////////////////////////////////////////
+
+  function initializeRecord(vals, header) {
+    return _.reduce(header.columns, function(record, colname, idx) {
+      // null if val is '.' (VCF null), else the trimmed value.
+      var val = vals[idx] ? vals[idx].trim() : null;
+      record[colname] = val === '.' ? null : val;
+      return record;
+    }, {__header: header});
   }
+
+  function Record(line, header) {
+    // Returns a VCF record.
+    //
+    // `line` - a line of the VCF file that represents an individual record.
+    // `header` - the parsed VCF header.
+    var vals = line.split('\t'),
+    record = initializeRecord(vals, header);
+
+    if (record.CHROM)   record.CHROM = parseChrom(record.CHROM, header);
+    if (record.POS)     record.POS = parsePos(record.POS, header);
+    if (record.ID)      record.ID = parseId(record.ID, header);
+    if (record.REF)     record.REF = parseRef(record.REF, header);
+    if (record.ALT)     record.ALT = parseAlt(record.ALT, header);
+    if (record.QUAL)    record.QUAL = parseQual(record.QUAL, header);
+    if (record.FILTER)  record.FILTER = parseFilter(record.FILTER, header);
+    if (record.INFO)    record.INFO = parseInfo(record.INFO, header);
+    if (record.FORMAT)  record.FORMAT = parseFormat(record.FORMAT, header);
+
+    record.__KEY__ = genKey(record);
+
+    _.each(header.sampleNames, function(sampleName) {
+      var sample = record[sampleName];
+      if (sample) {
+        record[sampleName] = parseSample(sample, record.FORMAT, header);
+      }
+    });
+
+    record.variantType = function() {
+      if (record.isSnv()) return 'SNV';
+      if (record.isSv()) return 'SV';
+      if (record.isIndel()) return record.isDeletion() ? 'DELETION' : 'INSERTION';
+      return 'UNKNOWN';
+    }
+
+    record.isSnv = function() {
+      var isSnv = true;
+      if (record.REF && record.REF.length > 1) isSnv = false;
+      _.each(record.ALT, function(alt) {
+        if (alt && !_.contains(BASES, alt)) isSnv = false;
+      });
+      return isSnv;
+    }
+
+    record.isSv = function() {
+      if (record.INFO && record.INFO.SVTYPE) return true;
+      return false;
+    }
+
+    record.isCnv = function() {
+      if (record.INFO && record.INFO.SVTYPE === 'CNV') return true;
+      return false;
+    }
+
+    record.isIndel = function() {
+      return record.isDeletion() || record.isInsertion();
+    }
+
+    record.isDeletion = function() {
+      if (record.isSv()) return false;
+      if (record.ALT && record.ALT.length > 1) return false;
+      if (record.REF && record.ALT && record.ALT.length <= 1) {
+        if (record.REF.length > record.ALT[0].length) return true;
+      }
+      return false;
+    }
+
+    record.isInsertion = function() {
+      if (record.isSv()) return false;
+      if (record.REF && record.ALT && record.ALT.length >= 1) {
+        if (record.REF.length < record.ALT[0].length) return true;
+      }
+      return false;
+    }
+
+    return record;
+  }
+
+
+  function parseVCF(text) {
+    // Returns a parsed VCF object, with attributed `data` and `header`.
+    //    `data` - a list of VCF Records.
+    //    `header` - an object of the metadata parsed from the VCF header.
+    //
+    // `text` - VCF plaintext.
+    var lines = _.reject(text.split('\n'), function(line) {
+      return line === '';
+    })
+
+    var partitions = _.partition(lines, function(line) {
+      return line[0] === '#';
+    });
+
+    var header = parseHeader(partitions[0]),
+    data = _.map(partitions[1], function(line) {
+      return new Record(line, header);
+    });
+
+    return {header: header, data: data};
+  }
+
+
+    ///////////////////////////
+   //   Primary VCF.js API  //
+  ///////////////////////////
+
+  function parseData(text, type) {
+    var data, header;
+    type = type.toLowerCase();
+    if (type === 'vcf') {
+      var parsedVcf = parseVCF(text);
+      data = parsedVcf.data;
+      header = parsedVcf.header;
+    } else if (type === 'json') {
+      // TODO(ihodes): Need a spec and correspondance between
+      //               Records and these (add __header -> header,
+      //               etc).
+      data = JSON.parse(text).data;
+      header = JSON.parse(text).header;
+    } else {
+      throw TypeError("Type '" +  type + "' not recognized: use VCF or JSON.");
+    }
+    return {data: data, header: header}
+  }
+
+
+  vcf_.parseChrom = function(_) {
+    if (!arguments.length) return parseChrom;
+    parseChrom = _;
+    return vcf_;
+  };
+  vcf_.parsePos = function(_) {
+    if (!arguments.length) return parsePos;
+    parsePos = _;
+    return vcf_;
+  };
+  vcf_.parseId = function(_) {
+    if (!arguments.length) return parseId;
+    parseId = _;
+    return vcf_;
+  };
+  vcf_.parseRef = function(_) {
+    if (!arguments.length) return parseRef;
+    parseRef = _;
+    return vcf_;
+  };
+  vcf_.parseAlt = function(_) {
+    if (!arguments.length) return parseAlt;
+    parseAlt = _;
+    return vcf_;
+  };
+  vcf_.parseQual = function(_) {
+    if (!arguments.length) return parseQual;
+    parseQual = _;
+    return vcf_;
+  };
+  vcf_.parseFilter = function(_) {
+    if (!arguments.length) return parseFilter;
+    parseFilter = _;
+    return vcf_;
+  };
+  vcf_.parseInfo = function(_) {
+    if (!arguments.length) return parseInfo;
+    parseInfo = _;
+    return vcf_;
+  };
+  vcf_.parseFormat = function(_) {
+    if (!arguments.length) return parseFormat;
+    parseFormat = _;
+    return vcf_;
+  };
+  vcf_.parseSample = function(_) {
+    if (!arguments.length) return parseSample;
+    parseSample = _;
+    return vcf_;
+  };
+  vcf_.genKey = function(_) {
+    if (!arguments.length) return genKey;
+    genKey = _;
+    return vcf_;
+  };
 
   vcf_.header = function() {
     return header;

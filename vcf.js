@@ -42,8 +42,8 @@ function maybeMapOverVal(fn, val) {
   return val == '.' ? null : fn(val);
 }
 
-// Set radix to 10 to prevent problems in strangley-formed VCFs. Otherwise we
-// may end up parsing octal, for example.
+// Set radix to 10 to prevent problems in strangely-formed VCFs. Otherwise we
+// may end up parsing octal, for example, if the int starts with a 0.
 // c.f. http://stackoverflow.com/questions/7818903/jslint-says-missing-radix-parameter-what-should-i-do
 var _parseInt = function(i) { return parseInt(i, 10); };
 
@@ -245,7 +245,7 @@ function _parseSample(sample, format, header) {
 }
 
 function _genKey(record) {
-  return 'chr' + record.CHROM + ':' + record.POS + "(" + record.REF + "->" + record.ALT + ")";
+  return record.CHROM + ':' + record.POS + "(" + record.REF + "->" + record.ALT + ")";
 }
 
 

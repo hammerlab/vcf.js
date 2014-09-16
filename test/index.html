@@ -6,6 +6,23 @@
   <body>
     <script src="http://underscorejs.org/underscore-min.js"></script>
     <script src="/vcf.js"></script>
-    <script src="index.js"></script>
+    <script>
+     var request = new XMLHttpRequest();
+     request.open('GET', 'ss.vcf', true);
+     request.send(null)
+     request.onreadystatechange = function() {
+       if (request.readyState == 4) {
+         var parser = vcf.parser()
+                          .genKey(function(record, header) {
+                            return 'this key is my custom key';
+                          })
+                          .parseChrom(function(chr, header)  {
+                            return 'chr' + chr;
+                          });
+         window.data = parser(request.responseText);
+         console.log("data can be found in window.data");
+       }
+     };
+    </script>
   </body>
 </html>

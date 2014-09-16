@@ -6,12 +6,8 @@ if (typeof _ === 'function') {
 } else if (typeof require === 'function') {
   _ = require('underscore');
 } else {
-  throw Error("Cannot find or require underscore.js");
+  throw Error("Cannot find or require underscore.js (as '_')");
 }
-
-
-// TODO(ihodes): Add function that appends 1 to N more VCF records send from
-//               server to the VCF.
 
 
   //////////////////////////
@@ -21,13 +17,9 @@ if (typeof _ === 'function') {
 // There are 9 columns before samples are listed.
 var NUM_STANDARD_HEADER_COLUMNS = 9;
 
-// The default format of text we're parsing. Can be VCF or JSON.
-var DEFAULT_TYPE = 'vcf';
-
 var BASES = ['A', 'C', 'T', 'G'];
 
 // Console prints messages when deriving undefined types.
-// TODO(ihodes): enable setting this.
 var WARN = false;
 
 // VCF values can be comma-separated lists, so here we want to convert them into
@@ -145,7 +137,7 @@ function parseVCFVersion(headers) {
   // Returns the version of the VCF file. Hacky.
   var version = headers[0].split('=')[1];
   if (version != 'VCFv4.1' && version != 'VCFv4.0') {
-    throw Error("VCF version must be 4.1.");
+    throw Error("VCF version must be 4.1 or 4.0.");
   }
   return '4.1';
 }
@@ -205,7 +197,7 @@ function _parseInfo(info, header) {
       type = deriveType(val);
       val = HEADER_TYPES[type](val);
       if (WARN) {
-        console.log("Warning: INFO type '" + key + "' is not defined in header. (Value = '" + val + "'). Derived type as '" + type + "'.");
+        console.warn("INFO type '" + key + "' is not defined in header. (Value = '" + val + "'). Derived type as '" + type + "'.");
       }
     }
 
@@ -235,7 +227,7 @@ function _parseSample(sample, format, header) {
       type = deriveType(val);
       val = HEADER_TYPES[type](val);
       if (WARN) {
-        console.log("Warning: INFO type '" + key + "' is not defined in header. (Value = '" + val + "'). Derived type as '" + type + "'.");
+        console.warn("INFO type '" + key + "' is not defined in header. (Value = '" + val + "'). Derived type as '" + type + "'.");
       }
     }
 
@@ -249,8 +241,7 @@ function _genKey(record) {
 }
 
 
-
-function vcf() {
+function parser() {
   var data = {},
       header = [],
       parseChrom = _parseChrom,
@@ -265,8 +256,10 @@ function vcf() {
       parseSample = _parseSample,
       genKey = _genKey;
 
-  var vcf_ = function() {
-    return this;
+
+  function _parser(text) {
+    var parsedVcf = parseVCF(text);
+    return {data: parsedVcf.data, header: parsedVcf.header};
   };
 
     //////////////////////////////////////////////////////////////////////
@@ -299,8 +292,7 @@ function vcf() {
     if (record.FILTER)  record.FILTER = parseFilter(record.FILTER, header);
     if (record.INFO)    record.INFO = parseInfo(record.INFO, header);
     if (record.FORMAT)  record.FORMAT = parseFormat(record.FORMAT, header);
-
-    record.__KEY__ = genKey(record);
+    record.__KEY__ = genKey(record, header);
 
     _.each(header.sampleNames, function(sampleName) {
       var sample = record[sampleName];
@@ -360,12 +352,12 @@ function vcf() {
   }
 
 
+  // Returns a parsed VCF object, with attributed `data` and `header`.
+  //    `data` - a list of VCF Records.
+  //    `header` - an object of the metadata parsed from the VCF header.
+  //
+  // `text` - VCF plaintext.
   function parseVCF(text) {
-    // Returns a parsed VCF object, with attributed `data` and `header`.
-    //    `data` - a list of VCF Records.
-    //    `header` - an object of the metadata parsed from the VCF header.
-    //
-    // `text` - VCF plaintext.
     var lines = _.reject(text.split('\n'), function(line) {
       return line === '';
     })
@@ -375,9 +367,9 @@ function vcf() {
     });
 
     var header = parseHeader(partitions[0]),
-    data = _.map(partitions[1], function(line) {
-      return new Record(line, header);
-    });
+        data = _.map(partitions[1], function(line) {
+          return new Record(line, header);
+        });
 
     return {header: header, data: data};
   }
@@ -387,129 +379,105 @@ function vcf() {
    //   Primary VCF.js API  //
   ///////////////////////////
 
-  function parseData(text, type) {
-    var data, header;
-    type = type.toLowerCase();
-    if (type === 'vcf') {
-      var parsedVcf = parseVCF(text);
-      data = parsedVcf.data;
-      header = parsedVcf.header;
-    } else if (type === 'json') {
-      // TODO(ihodes): Need a spec and correspondance between
-      //               Records and these (add __header -> header,
-      //               etc).
-      data = JSON.parse(text).data;
-      header = JSON.parse(text).header;
-    } else {
-      throw TypeError("Type '" +  type + "' not recognized: use VCF or JSON.");
-    }
-    return {data: data, header: header}
-  }
-
-
-  vcf_.parseChrom = function(_) {
+  _parser.parseChrom = function(_) {
     if (!arguments.length) return parseChrom;
     parseChrom = _;
-    return vcf_;
+    return _parser;
   };
-  vcf_.parsePos = function(_) {
+  _parser.parsePos = function(_) {
     if (!arguments.length) return parsePos;
     parsePos = _;
-    return vcf_;
+    return _parser;
   };
-  vcf_.parseId = function(_) {
+  _parser.parseId = function(_) {
     if (!arguments.length) return parseId;
     parseId = _;
-    return vcf_;
+    return _parser;
   };
-  vcf_.parseRef = function(_) {
+  _parser.parseRef = function(_) {
     if (!arguments.length) return parseRef;
     parseRef = _;
-    return vcf_;
+    return _parser;
   };
-  vcf_.parseAlt = function(_) {
+  _parser.parseAlt = function(_) {
     if (!arguments.length) return parseAlt;
     parseAlt = _;
-    return vcf_;
+    return _parser;
   };
-  vcf_.parseQual = function(_) {
+  _parser.parseQual = function(_) {
     if (!arguments.length) return parseQual;
     parseQual = _;
-    return vcf_;
+    return _parser;
   };
-  vcf_.parseFilter = function(_) {
+  _parser.parseFilter = function(_) {
     if (!arguments.length) return parseFilter;
     parseFilter = _;
-    return vcf_;
+    return _parser;
   };
-  vcf_.parseInfo = function(_) {
+  _parser.parseInfo = function(_) {
     if (!arguments.length) return parseInfo;
     parseInfo = _;
-    return vcf_;
+    return _parser;
   };
-  vcf_.parseFormat = function(_) {
+  _parser.parseFormat = function(_) {
     if (!arguments.length) return parseFormat;
     parseFormat = _;
-    return vcf_;
+    return _parser;
   };
-  vcf_.parseSample = function(_) {
+  _parser.parseSample = function(_) {
     if (!arguments.length) return parseSample;
     parseSample = _;
-    return vcf_;
+    return _parser;
   };
-  vcf_.genKey = function(_) {
+  _parser.genKey = function(_) {
     if (!arguments.length) return genKey;
     genKey = _;
-    return vcf_;
+    return _parser;
+  };
+  _parser.warn = function() {
+    if (!arguments.length) return WARN;
+    WARN = _;
+    return _parser;
   };
 
-  vcf_.header = function() {
-    return header;
-  };
-
-  vcf_.data = function(text, type) {
-    if (!arguments.length)  return data;
-
-    var result = parseData(text, type || DEFAULT_TYPE);
-    data = result.data;
-    header = result.header;
-    return vcf_;
-  };
-  vcf_.fetch = function(chromosome, start, end) {
-    // O(N) time. TODO(ihodes): Add sorted option to get O(lnN),
-    //                          fallback to O(N).
-    return _.filter(data, function(record) {
-      if (chromosome != record.CHROM)
-        return false;
-
-      if (record.POS < end) {
-        if (record.POS >= start)
-          return true;
-        if (record.INFO && record.INFO.END &&
-            record.INFO.END >= start && record.POS < end)
-          return true;
-      }
-      return false;
-    });
-  };
-  vcf_.get = function(idx) {
-    return this.data()[idx];
-  };
-  vcf_.filter = function(fn) {
-    // TODO(ihodes): Should this return a vcf object with new data internally
-    //               instead of a plain array? Not sure I like this API.
-    return _.filter(data, fn);
-  };
-
-  return vcf_;
+  return _parser;
 }
+
+
+function fetch(data, chromosome, start, end) {
+  // O(N) time. TODO(ihodes): Add sorted option to get O(lnN),
+  //                          fallback to O(N).
+  return _.filter(data, function(record) {
+    if (chromosome != record.CHROM)
+      return false;
+
+    if (record.POS < end) {
+      if (record.POS >= start)
+        return true;
+      if (record.INFO && record.INFO.END &&
+          record.INFO.END >= start && record.POS < end)
+        return true;
+    }
+    return false;
+  });
+};
+
+
+  ///////////////////////
+ // Exporting the API //
+///////////////////////
+
+var exports = {
+  parser: parser,
+  fetch: fetch
+};
 
 if (typeof define === "function" && define.amd) {
   define(vcf);
 } else if (typeof module === "object" && module.exports) {
   module.exports = vcf;
 } else {
-  window.vcf = vcf;
+  window.vcf = exports;
 }
 
 })();

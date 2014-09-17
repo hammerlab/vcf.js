@@ -76,7 +76,7 @@ function parseHeader(headers) {
   // sample) and values arrays of objects containing the key-value information
   // stored therein.
   var header = {};
-  header.__raw = headers;
+  header.__RAW__ = headers;
   // VCF header lines always start with either one or two # signs.
   headers = _.map(headers, function(h) { return h.replace(/^##?/, ""); });
 
@@ -85,11 +85,11 @@ function parseHeader(headers) {
 
   // TODO(ihodes): parse other, less frequently used, header lines like
   //               'assembly', 'contig', 'PEDIGREE'
-  header.version = parseVCFVersion(headers);
-  header.alt = parseHeadersOf('ALT', headers);
-  header.info = parseHeadersOf('INFO', headers);
-  header.format = parseHeadersOf('FORMAT', headers);
-  header.sample = parseHeadersOf('SAMPLE', headers);
+  header.VERSION = parseVCFVersion(headers);
+  header.ALT = parseHeadersOf('ALT', headers);
+  header.INFO = parseHeadersOf('INFO', headers);
+  header.FORMAT = parseHeadersOf('FORMAT', headers);
+  header.SAMPL = parseHeadersOf('SAMPLE', headers);
 
   return header;
 }
@@ -259,7 +259,8 @@ function parser() {
 
   function _parser(text) {
     var parsedVcf = parseVCF(text);
-    return {data: parsedVcf.data, header: parsedVcf.header};
+    return {records: parsedVcf.data,
+            header: parsedVcf.header};
   };
 
     //////////////////////////////////////////////////////////////////////
@@ -272,7 +273,7 @@ function parser() {
       var val = vals[idx] ? vals[idx].trim() : null;
       record[colname] = val === '.' ? null : val;
       return record;
-    }, {__header: header});
+    }, {__HEADER__: header});
   }
 
   function Record(line, header) {

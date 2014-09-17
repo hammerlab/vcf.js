@@ -8,11 +8,13 @@
     <script src="/vcf.js"></script>
     <script>
      var request = new XMLHttpRequest();
-     request.open('GET', 'ss.vcf', true);
+     request.open('GET', 'mutect.vcf', true);
      request.send(null)
      request.onreadystatechange = function() {
        if (request.readyState == 4) {
-         var parser = vcf.parser()
+         console.log(request.responseText.length + " bytes loaded, parsing...")
+         var start = new Date(),
+             parser = vcf.parser()
                           .genKey(function(record, header) {
                             return 'this key is my custom key';
                           })
@@ -20,7 +22,9 @@
                             return 'chr' + chr;
                           });
          window.data = parser(request.responseText);
-         console.log("data can be found in window.data");
+         console.log("...finished parsing " + data.records.length + " records in " + (new Date() - start) + "ms.");
+         console.log("")
+         console.log("%cVCF data can now be found in window.data", "color:orange;");
        }
      };
     </script>

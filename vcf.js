@@ -14,6 +14,9 @@ if (typeof _ === 'function') {
  //   Parsing VCF Files  //
 //////////////////////////
 
+// Versions we know we can parse
+var ALLOWED_VERSIONS = ['VCFv4.0', 'VCFv4.1', 'VCFv4.2'];
+
 // There are 9 columns before samples are listed.
 var NUM_STANDARD_HEADER_COLUMNS = 9;
 
@@ -136,8 +139,8 @@ function parseHeaderLines(lines) {
 function parseVCFVersion(headers) {
   // Returns the version of the VCF file. Hacky.
   var version = headers[0].split('=')[1];
-  if (version != 'VCFv4.1' && version != 'VCFv4.0') {
-    throw Error("VCF version must be 4.1 or 4.0.");
+  if (!_.contains(ALLOWED_VERSIONS, version)) {
+    throw Error("VCF version must be 4.2, 4.1, or 4.0.");
   }
   return '4.1';
 }
@@ -269,7 +272,7 @@ function parser() {
 
   function initializeRecord(vals, header) {
     return _.reduce(header.columns, function(record, colname, idx) {
-      // null if val is '.' (VCF null), else the trimmed value.
+      // null if val is '.' (VCF null string type), else the trimmed value.
       var val = vals[idx] ? vals[idx].trim() : null;
       record[colname] = val === '.' ? null : val;
       return record;

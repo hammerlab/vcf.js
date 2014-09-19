@@ -1,6 +1,6 @@
 {
   "name": "vcf.js",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "A VCF parser and variant record model in JavaScript.",
   "main": "vcf.js",
   "directories": {

@@ -21,7 +21,7 @@
     "variants"
   ],
   "dependencies": {
-      "underscore": ">=1.6"
+    "underscore": "^1.7.0"
   },
   "author": "Isaac Hodes",
   "license": "Apache License, Version 2.0",

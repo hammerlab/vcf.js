@@ -1,10 +1,10 @@
-(function() {
+(function(root) {
 "use strict";
 
 if (typeof _ === 'function') {
-  // pass
+  var U = _;
 } else if (typeof require === 'function') {
-  _ = require('underscore');
+  var U = require('underscore');
 } else {
   throw Error("Cannot find or require underscore.js (as '_')");
 }
@@ -32,7 +32,7 @@ var WARN = false;
 function maybeMapOverVal(fn, val) {
   var vals = val.split(',');
   if (vals.length > 1) {
-    return _.map(vals, function(v) { return v == '.' ? null : fn(v); });
+    return U.map(vals, function(v) { return v == '.' ? null : fn(v); });
   }
   return val == '.' ? null : fn(val);
 }
@@ -44,10 +44,10 @@ var _parseInt = function(i) { return parseInt(i, 10); };
 
 // This map associates types with functions to parse from strings the associated
 // JS types.
-var HEADER_TYPES = {'Integer': _.partial(maybeMapOverVal, _parseInt),
-                    'Float': _.partial(maybeMapOverVal, parseFloat),
-                    'Flag': _.constant(true),
-                    'Character': _.partial(maybeMapOverVal, _.identity),
+var HEADER_TYPES = {'Integer': U.partial(maybeMapOverVal, _parseInt),
+                    'Float': U.partial(maybeMapOverVal, parseFloat),
+                    'Flag': U.constant(true),
+                    'Character': U.partial(maybeMapOverVal, U.identity),
                     'String': function(v) { return v == '.' ? null : v; }}
 
 function deriveType(val) {
@@ -61,7 +61,7 @@ function deriveType(val) {
   var type;
   if (!val || val.length === 0) {
     type = 'Flag';
-  } else if (!_.isNaN(parseFloat(val))) {
+  } else if (!U.isNaN(parseFloat(val))) {
     type = 'Float';
   } else {
     type = 'String';
@@ -81,7 +81,7 @@ function parseHeader(headers) {
   var header = {};
   header.__RAW__ = headers;
   // VCF header lines always start with either one or two # signs.
-  headers = _.map(headers, function(h) { return h.replace(/^##?/, ""); });
+  headers = U.map(headers, function(h) { return h.replace(/^##?/, ""); });
 
   header.columns = headers[headers.length-1].split('\t');
   header.sampleNames = header.columns.slice(NUM_STANDARD_HEADER_COLUMNS);
@@ -99,7 +99,7 @@ function parseHeader(headers) {
 
 function headersOf(type, lines) {
   // Returns the header lines out of `lines` matching `type`.
-  return _.filter(lines, function(h) {
+  return U.filter(lines, function(h) {
     return h.substr(0, type.length) == type;
   });
 }
@@ -108,21 +108,21 @@ function parseHeaderLines(lines) {
   // Returns a list of parsed header lines.
   //
   // `lines` - an array of header strings (stripped of "##").
-  return _.reduce(lines, function(headers, line) {
+  return U.reduce(lines, function(headers, line) {
     var specRe = /<(.*)>/,
         descriptionRe = /.*?(Description="(.*?)",?).*?/,
         spec = specRe.exec(line)[1],
         description = descriptionRe.exec(spec)[2];
 
     spec = spec.replace(/Description=".*?",?/, '');
-    window.s = spec;
-    var kvs = _.map(spec.split(','), function(kv) {
+
+    var kvs = U.map(spec.split(','), function(kv) {
       return kv.split('=');
     });
 
     if (description)  kvs.push(['Description', description]);
 
-    headers.push(_.reduce(kvs, function(acc, kv){
+    headers.push(U.reduce(kvs, function(acc, kv){
       var val = kv[1],
           key = kv[0];
       if (key.length <= 0)  return acc;
@@ -138,8 +138,10 @@ function parseHeaderLines(lines) {
 
 function parseVCFVersion(headers) {
   // Returns the version of the VCF file. Hacky.
+  console.log(headers[0]);
   var version = headers[0].split('=')[1];
-  if (!_.contains(ALLOWED_VERSIONS, version)) {
+  if (!U.contains(ALLOWED_VERSIONS, version)) {
+    console.log(version);
     throw Error("VCF version must be 4.2, 4.1, or 4.0.");
   }
   return '4.1';
@@ -186,11 +188,11 @@ function _parseFilter(filters, header) {
 }
 
 function _parseInfo(info, header) {
-  return _.reduce(info.split(';'), function(acc, kv) {
+  return U.reduce(info.split(';'), function(acc, kv) {
     kv = kv.split('=')
     var key = kv[0],
         val = kv[1],
-        headerSpec = _.findWhere(header.info, {ID: key}),
+        headerSpec = U.findWhere(header.info, {ID: key}),
         type;
 
     if (headerSpec && headerSpec.Type) {
@@ -216,9 +218,9 @@ function _parseFormat(format, header) {
 
 function _parseSample(sample, format, header) {
   sample = sample.split(':');
-  return _.reduce(sample, function(sample, val, idx) {
+  return U.reduce(sample, function(sample, val, idx) {
     var key = format[idx],
-    headerSpec = _.findWhere(header.format, {ID: key}),
+    headerSpec = U.findWhere(header.format, {ID: key}),
     type;
 
     if (headerSpec && headerSpec.Type) {
@@ -271,7 +273,7 @@ function parser() {
   //////////////////////////////////////////////////////////////////////
 
   function initializeRecord(vals, header) {
-    return _.reduce(header.columns, function(record, colname, idx) {
+    return U.reduce(header.columns, function(record, colname, idx) {
       // null if val is '.' (VCF null string type), else the trimmed value.
       var val = vals[idx] ? vals[idx].trim() : null;
       record[colname] = val === '.' ? null : val;
@@ -298,7 +300,7 @@ function parser() {
     if (record.FORMAT)  record.FORMAT = parseFormat(record.FORMAT, header);
     record.__KEY__ = genKey(record, header);
 
-    _.each(header.sampleNames, function(sampleName) {
+    U.each(header.sampleNames, function(sampleName) {
       var sample = record[sampleName];
       if (sample) {
         record[sampleName] = parseSample(sample, record.FORMAT, header);
@@ -315,8 +317,8 @@ function parser() {
     record.isSnv = function() {
       var isSnv = true;
       if (record.REF && record.REF.length > 1) isSnv = false;
-      _.each(record.ALT, function(alt) {
-        if (alt && !_.contains(BASES, alt)) isSnv = false;
+      U.each(record.ALT, function(alt) {
+        if (alt && !U.contains(BASES, alt)) isSnv = false;
       });
       return isSnv;
     }
@@ -362,16 +364,16 @@ function parser() {
   //
   // `text` - VCF plaintext.
   function parseVCF(text) {
-    var lines = _.reject(text.split('\n'), function(line) {
+    var lines = U.reject(text.split('\n'), function(line) {
       return line === '';
     })
 
-    var partitions = _.partition(lines, function(line) {
+    var partitions = U.partition(lines, function(line) {
       return line[0] === '#';
     });
 
     var header = parseHeader(partitions[0]),
-        data = _.map(partitions[1], function(line) {
+        data = U.map(partitions[1], function(line) {
           return new Record(line, header);
         });
 
@@ -451,7 +453,7 @@ function parser() {
 function fetch(data, chromosome, start, end) {
   // O(N) time. TODO(ihodes): Add sorted option to get O(lnN),
   //                          fallback to O(N).
-  return _.filter(data, function(record) {
+  return U.filter(data, function(record) {
     if (chromosome != record.CHROM)
       return false;
 
@@ -477,11 +479,11 @@ var exports = {
 };
 
 if (typeof define === "function" && define.amd) {
-  define(vcf);
+  define(exports);
 } else if (typeof module === "object" && module.exports) {
-  module.exports = vcf;
+  module.exports = exports;
 } else {
-  window.vcf = exports;
+  root.vcf = exports;
 }
 
-})();
+})(this);

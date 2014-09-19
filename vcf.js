@@ -138,10 +138,8 @@ function parseHeaderLines(lines) {
 
 function parseVCFVersion(headers) {
   // Returns the version of the VCF file. Hacky.
-  console.log(headers[0]);
   var version = headers[0].split('=')[1];
   if (!U.contains(ALLOWED_VERSIONS, version)) {
-    console.log(version);
     throw Error("VCF version must be 4.2, 4.1, or 4.0.");
   }
   return '4.1';

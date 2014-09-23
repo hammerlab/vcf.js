@@ -308,8 +308,8 @@ function parser() {
     record.variantType = function() {
       if (record.isSnv()) return 'SNV';
       if (record.isSv()) return 'SV';
-      if (record.isIndel()) return record.isDeletion() ? 'DELETION' : 'INSERTION';
-      return 'UNKNOWN';
+      if (record.isIndel()) return 'INDEL';
+      return null;
     }
 
     record.isSnv = function() {
@@ -448,18 +448,19 @@ function parser() {
 }
 
 
-function fetch(data, chromosome, start, end) {
-  // O(N) time. TODO(ihodes): Add sorted option to get O(lnN),
-  //                          fallback to O(N).
-  return U.filter(data, function(record) {
-    if (chromosome != record.CHROM)
-      return false;
-
-    if (record.POS < end) {
+/**
+ * Return list of records which fall between (or, in the case of a SNV, overlap)
+ * start and end.
+ *
+ * O(N) time.
+ */
+function fetch(records, chromosome, start, end) {
+  // TODO(ihodes): Add sorted option to get O(lnN), fallback to O(N).
+  return U.filter(records, function(record) {
+    if (record.CHROM === chromosome && record.POS < end) {
       if (record.POS >= start)
         return true;
-      if (record.INFO && record.INFO.END &&
-          record.INFO.END >= start && record.POS < end)
+      if (record.INFO && record.INFO.END && record.INFO.END >= start)
         return true;
     }
     return false;

@@ -284,75 +284,76 @@ function parser() {
     //
     // `line` - a line of the VCF file that represents an individual record.
     // `header` - the parsed VCF header.
-    var vals = line.split('\t'),
-    record = initializeRecord(vals, header);
+    var vals = line.split('\t');
+    var initVals = initializeRecord(vals, header);
+    for (var k in initVals) {
+      this[k] = initVals[k];
+    }
 
-    if (record.CHROM)   record.CHROM = parseChrom(record.CHROM, header);
-    if (record.POS)     record.POS = parsePos(record.POS, header);
-    if (record.ID)      record.ID = parseId(record.ID, header);
-    if (record.REF)     record.REF = parseRef(record.REF, header);
-    if (record.ALT)     record.ALT = parseAlt(record.ALT, header);
-    if (record.QUAL)    record.QUAL = parseQual(record.QUAL, header);
-    if (record.FILTER)  record.FILTER = parseFilter(record.FILTER, header);
-    if (record.INFO)    record.INFO = parseInfo(record.INFO, header);
-    if (record.FORMAT)  record.FORMAT = parseFormat(record.FORMAT, header);
-    record.__KEY__ = genKey(record, header);
+    if (this.CHROM)   this.CHROM = parseChrom(this.CHROM, header);
+    if (this.POS)     this.POS = parsePos(this.POS, header);
+    if (this.ID)      this.ID = parseId(this.ID, header);
+    if (this.REF)     this.REF = parseRef(this.REF, header);
+    if (this.ALT)     this.ALT = parseAlt(this.ALT, header);
+    if (this.QUAL)    this.QUAL = parseQual(this.QUAL, header);
+    if (this.FILTER)  this.FILTER = parseFilter(this.FILTER, header);
+    if (this.INFO)    this.INFO = parseInfo(this.INFO, header);
+    if (this.FORMAT)  this.FORMAT = parseFormat(this.FORMAT, header);
+    this.__KEY__ = genKey(this, header);
 
     U.each(header.sampleNames, function(sampleName) {
-      var sample = record[sampleName];
+      var sample = this[sampleName];
       if (sample) {
-        record[sampleName] = parseSample(sample, record.FORMAT, header);
+        this[sampleName] = parseSample(sample, this.FORMAT, header);
       }
+    }.bind(this));
+  }
+
+  Record.prototype.variantType = function() {
+    if (this.isSnv()) return 'SNV';
+    if (this.isSv()) return 'SV';
+    if (this.isIndel()) return 'INDEL';
+    return null;
+  }
+
+  Record.prototype.isSnv = function() {
+    var isSnv = true;
+    if (this.REF && this.REF.length > 1) isSnv = false;
+    U.each(this.ALT, function(alt) {
+      if (alt && !U.contains(BASES, alt)) isSnv = false;
     });
+    return isSnv;
+  }
 
-    record.variantType = function() {
-      if (record.isSnv()) return 'SNV';
-      if (record.isSv()) return 'SV';
-      if (record.isIndel()) return 'INDEL';
-      return null;
+  Record.prototype.isSv = function() {
+    if (this.INFO && this.INFO.SVTYPE) return true;
+    return false;
+  }
+
+  Record.prototype.isCnv = function() {
+    if (this.INFO && this.INFO.SVTYPE === 'CNV') return true;
+    return false;
+  }
+
+  Record.prototype.isIndel = function() {
+    return this.isDeletion() || this.isInsertion();
+  }
+
+  Record.prototype.isDeletion = function() {
+    if (this.isSv()) return false;
+    if (this.ALT && this.ALT.length > 1) return false;
+    if (this.REF && this.ALT && this.ALT.length <= 1) {
+      if (this.REF.length > this.ALT[0].length) return true;
     }
+    return false;
+  }
 
-    record.isSnv = function() {
-      var isSnv = true;
-      if (record.REF && record.REF.length > 1) isSnv = false;
-      U.each(record.ALT, function(alt) {
-        if (alt && !U.contains(BASES, alt)) isSnv = false;
-      });
-      return isSnv;
+  Record.prototype.isInsertion = function() {
+    if (this.isSv()) return false;
+    if (this.REF && this.ALT && this.ALT.length >= 1) {
+      if (this.REF.length < this.ALT[0].length) return true;
     }
-
-    record.isSv = function() {
-      if (record.INFO && record.INFO.SVTYPE) return true;
-      return false;
-    }
-
-    record.isCnv = function() {
-      if (record.INFO && record.INFO.SVTYPE === 'CNV') return true;
-      return false;
-    }
-
-    record.isIndel = function() {
-      return record.isDeletion() || record.isInsertion();
-    }
-
-    record.isDeletion = function() {
-      if (record.isSv()) return false;
-      if (record.ALT && record.ALT.length > 1) return false;
-      if (record.REF && record.ALT && record.ALT.length <= 1) {
-        if (record.REF.length > record.ALT[0].length) return true;
-      }
-      return false;
-    }
-
-    record.isInsertion = function() {
-      if (record.isSv()) return false;
-      if (record.REF && record.ALT && record.ALT.length >= 1) {
-        if (record.REF.length < record.ALT[0].length) return true;
-      }
-      return false;
-    }
-
-    return record;
+    return false;
   }
 
 

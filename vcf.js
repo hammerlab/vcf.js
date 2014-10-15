@@ -370,6 +370,9 @@ function parser() {
     var partitions = U.partition(lines, function(line) {
       return line[0] === '#';
     });
+    if (partitions[0].length == 0) {
+      throw "Invalid VCF file: missing header";
+    }
 
     var header = parseHeader(partitions[0]),
         data = U.map(partitions[1], function(line) {

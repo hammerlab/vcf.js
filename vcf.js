@@ -1,10 +1,11 @@
 (function(root) {
 "use strict";
 
+var U;
 if (typeof _ === 'function') {
-  var U = _;
+  U = _;
 } else if (typeof require === 'function') {
-  var U = require('underscore');
+  U = require('underscore');
 } else {
   throw Error("Cannot find or require underscore.js (as '_')");
 }
@@ -48,7 +49,7 @@ var HEADER_TYPES = {'Integer': U.partial(maybeMapOverVal, _parseInt),
                     'Float': U.partial(maybeMapOverVal, parseFloat),
                     'Flag': U.constant(true),
                     'Character': U.partial(maybeMapOverVal, U.identity),
-                    'String': function(v) { return v == '.' ? null : v; }}
+                    'String': function(v) { return v == '.' ? null : v; }};
 
 function deriveType(val) {
   // Returns the derived type, falling back to String if nothing else works.
@@ -131,7 +132,7 @@ function parseHeaderLines(lines) {
       else if (key === 'Number')  val = parseInt(val);
       acc[key] = val;
       return acc;
-    }, {}))
+    }, {}));
     return headers;
   }, []);
 }
@@ -187,7 +188,7 @@ function _parseFilter(filters, header) {
 
 function _parseInfo(info, header) {
   return U.reduce(info.split(';'), function(acc, kv) {
-    kv = kv.split('=')
+    kv = kv.split('=');
     var key = kv[0],
         val = kv[1],
         headerSpec = U.findWhere(header.info, {ID: key}),
@@ -264,7 +265,7 @@ function parser() {
     var parsedVcf = parseVCF(text);
     return {records: parsedVcf.data,
             header: parsedVcf.header};
-  };
+  }
 
     //////////////////////////////////////////////////////////////////////
    // Below: initializing Records and parsing their constituent data.  //
@@ -314,7 +315,7 @@ function parser() {
     if (this.isSv()) return 'SV';
     if (this.isIndel()) return 'INDEL';
     return null;
-  }
+  };
 
   Record.prototype.isSnv = function() {
     var isSnv = true;
@@ -323,21 +324,21 @@ function parser() {
       if (alt && !U.contains(BASES, alt)) isSnv = false;
     });
     return isSnv;
-  }
+  };
 
   Record.prototype.isSv = function() {
     if (this.INFO && this.INFO.SVTYPE) return true;
     return false;
-  }
+  };
 
   Record.prototype.isCnv = function() {
     if (this.INFO && this.INFO.SVTYPE === 'CNV') return true;
     return false;
-  }
+  };
 
   Record.prototype.isIndel = function() {
     return this.isDeletion() || this.isInsertion();
-  }
+  };
 
   Record.prototype.isDeletion = function() {
     if (this.isSv()) return false;
@@ -346,7 +347,7 @@ function parser() {
       if (this.REF.length > this.ALT[0].length) return true;
     }
     return false;
-  }
+  };
 
   Record.prototype.isInsertion = function() {
     if (this.isSv()) return false;
@@ -354,7 +355,7 @@ function parser() {
       if (this.REF.length < this.ALT[0].length) return true;
     }
     return false;
-  }
+  };
 
 
   // Returns a parsed VCF object, with attributed `data` and `header`.
@@ -365,7 +366,7 @@ function parser() {
   function parseVCF(text) {
     var lines = U.reject(text.split('\n'), function(line) {
       return line === '';
-    })
+    });
 
     var partitions = U.partition(lines, function(line) {
       return line[0] === '#';
@@ -466,7 +467,7 @@ function fetch(records, chromosome, start, end) {
     }
     return false;
   });
-};
+}
 
 
   ///////////////////////

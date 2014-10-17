@@ -219,8 +219,8 @@ function _parseSample(sample, format, header) {
   sample = sample.split(':');
   return U.reduce(sample, function(sample, val, idx) {
     var key = format[idx],
-    headerSpec = U.findWhere(header.format, {ID: key}),
-    type;
+        headerSpec = U.findWhere(header.FORMAT, {ID: key}),
+        type;
 
     if (headerSpec && headerSpec.Type) {
       type = headerSpec.Type;

@@ -7,7 +7,7 @@ if (typeof _ === 'function') {
 } else if (typeof require === 'function') {
   U = require('underscore');
 } else {
-  throw Error("Cannot find or require underscore.js (as '_')");
+  throw new Error("Cannot find or require underscore.js (as '_')");
 }
 
 
@@ -79,6 +79,10 @@ function parseHeader(headers) {
   // Returns a header object with keys header line types (.e.g format, info,
   // sample) and values arrays of objects containing the key-value information
   // stored therein.
+  if (headers.length === 0) {
+    throw new Error('Invalid VCF File: missing header.');
+  }
+
   var header = {};
   header.__RAW__ = headers;
   // VCF header lines always start with either one or two # signs.
@@ -141,7 +145,7 @@ function parseVCFVersion(headers) {
   // Returns the version of the VCF file. Hacky.
   var version = headers[0].split('=')[1];
   if (!U.contains(ALLOWED_VERSIONS, version)) {
-    throw Error("VCF version must be 4.2, 4.1, or 4.0.");
+    throw new Error("VCF Version Error: version must be 4.2, 4.1, or 4.0.");
   }
   return '4.1';
 }

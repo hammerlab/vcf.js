@@ -1,13 +1,13 @@
 {
   "name": "vcf.js",
   "version": "0.2.6",
-  "description": "A VCF parser and variant record model in JavaScript.",
+  "description": "A VCF parser, for the browser & node.",
   "main": "vcf.js",
   "directories": {
     "test": "test"
   },
   "scripts": {
-    "test": "make test"
+    "test": "mocha"
   },
   "repository": {
     "type": "git",
@@ -22,6 +22,9 @@
   ],
   "dependencies": {
     "underscore": "^1.7.0"
+  },
+  "devDependencies": {
+    "mocha": "^1.21.5"
   },
   "author": "Isaac Hodes",
   "license": "Apache License, Version 2.0",

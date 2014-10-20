@@ -8,7 +8,7 @@
     <script src="/vcf.js"></script>
     <script>
      var request = new XMLHttpRequest();
-     request.open('GET', 'mutect.vcf', true);
+     request.open('GET', 'data/mutect.vcf', true);
      request.send(null)
      request.onreadystatechange = function() {
        if (request.readyState == 4) {

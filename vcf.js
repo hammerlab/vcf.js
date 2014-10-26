@@ -267,7 +267,7 @@ function parser() {
 
   function _parser(text) {
     var parsedVcf = parseVCF(text);
-    return {records: parsedVcf.data,
+    return {records: parsedVcf.records,
             header: parsedVcf.header};
   }
 
@@ -362,8 +362,8 @@ function parser() {
   };
 
 
-  // Returns a parsed VCF object, with attributed `data` and `header`.
-  //    `data` - a list of VCF Records.
+  // Returns a parsed VCF object, with attributes `records` and `header`.
+  //    `records` - a list of VCF Records.
   //    `header` - an object of the metadata parsed from the VCF header.
   //
   // `text` - VCF plaintext.
@@ -377,11 +377,11 @@ function parser() {
     });
 
     var header = parseHeader(partitions[0]),
-        data = U.map(partitions[1], function(line) {
+        records = U.map(partitions[1], function(line) {
           return new Record(line, header);
         });
 
-    return {header: header, data: data};
+    return {header: header, records: records};
   }
 
 

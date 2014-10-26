@@ -5,7 +5,7 @@ representations of them. It is used to manipulate and analyse genotype calls.
 
 ## Documentation
 
-Documentation on the way. Code is fully-documented.
+Documentation can be found in DOCUMENTATION.md.
 
 ## Using it
 

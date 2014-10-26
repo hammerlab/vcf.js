@@ -15,12 +15,12 @@
          console.log(request.responseText.length + " bytes loaded, parsing...")
          var start = new Date(),
              parser = vcf.parser()
-                          .genKey(function(record, header) {
-                            return 'this key is my custom key';
-                          })
-                          .parseChrom(function(chr, header)  {
-                            return 'chr' + chr;
-                          });
+                         .genKey(function(record, header) {
+                           return 'this key is my custom key';
+                         })
+                         .parseChrom(function(chr, header)  {
+                           return 'chr' + chr;
+                         });
          window.data = parser(request.responseText);
          console.log("...finished parsing " + data.records.length + " records in " + (new Date() - start) + "ms.");
          console.log("");

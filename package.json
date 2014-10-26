@@ -1,13 +1,13 @@
 {
   "name": "vcf.js",
-  "version": "0.2.7",
+  "version": "0.2.8",
   "description": "A VCF parser, for the browser & node.",
   "main": "vcf.js",
   "directories": {
     "test": "test"
   },
   "scripts": {
-    "test": "mocha"
+    "test": "mocha test/test.js"
   },
   "repository": {
     "type": "git",
@@ -24,6 +24,8 @@
     "underscore": "^1.7.0"
   },
   "devDependencies": {
+    "benchmark": "^1.0.0",
+    "microtime": "^1.0.1",
     "mocha": "^1.21.5"
   },
   "author": "Isaac Hodes",

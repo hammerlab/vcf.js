@@ -7,7 +7,7 @@ if (typeof _ === 'function') {
 } else if (typeof require === 'function') {
   U = require('underscore');
 } else {
-  throw new Error("Cannot find or require underscore.js (as '_')");
+  throw new Error("Cannot find or require underscore.js.");
 }
 
 
@@ -223,15 +223,22 @@ function _parseSample(sample, format, header) {
   sample = sample.split(':');
   return U.reduce(sample, function(sample, val, idx) {
     var key = format[idx],
-        headerSpec = U.findWhere(header.FORMAT, {ID: key}),
+        headerSpec,
         type;
+
+    // The below is a massive optimization for:
+    // headerSpec = U.findWhere(header.FORMAT, {ID: key})
+    var hspec, hfmt = header.FORMAT;
+    for(var fi = 0; fi < hfmt.length; fi++) {
+      hspec = hfmt[fi];
+      if (hspec.ID == key) headerSpec = hspec;
+    }
 
     if (headerSpec && headerSpec.Type) {
       type = headerSpec.Type;
       val = HEADER_TYPES[type](val);
     } else {
-      // No type defined in header: we'll try to derive it, and fall back
-      // to String.
+      // No type defined in header: we'll try to derive it & fall back to String
       type = deriveType(val);
       val = HEADER_TYPES[type](val);
       if (WARN) {

@@ -184,27 +184,33 @@ function _parseFilter(filters, header) {
 }
 
 function _parseInfo(info, header) {
-  return U.reduce(info.split(';'), function(acc, kv) {
-    kv = kv.split('=');
-    var key = kv[0],
+  var infos = info.split(';'),
+      parsedInfo = {};
+  for (var idx = 0; idx < infos.length; idx++) {
+    var kv = infos[idx].split('='),
+        key = kv[0],
         val = kv[1],
-        headerSpec = U.findWhere(header.info, {ID: key}),
+        headerSpec,
         type;
+
+    // Optimization for _.findWhere(header.INFO, {ID: key})
+    var hspec, hinfo = header.INFO;
+    for(var i = 0; i < hinfo.length; i++) {
+      hspec = hinfo[i];
+      if (hspec.ID == key) headerSpec = hspec;
+    }
 
     if (headerSpec && headerSpec.Type) {
       type = headerSpec.Type;
-      val = HEADER_TYPES[type](val);
     } else {
       type = deriveType(val);
-      val = HEADER_TYPES[type](val);
-      if (WARN) {
-        console.warn("INFO type '" + key + "' is not defined in header. (Value = '" + val + "'). Derived type as '" + type + "'.");
-      }
+      if (WARN) console.warn("INFO type '" + key + "' is not defined in header. (Value = '" + val + "'). Derived type as '" + type + "'.");
     }
 
-    acc[key] = val;
-    return acc;
-  }, {});
+    val = HEADER_TYPES[type](val);
+    parsedInfo[key] = val;
+  }
+  return parsedInfo;
 }
 
 function _parseFormat(format, header) {
@@ -213,14 +219,16 @@ function _parseFormat(format, header) {
 }
 
 function _parseSample(sample, format, header) {
-  sample = sample.split(':');
-  return U.reduce(sample, function(sample, val, idx) {
-    var key = format[idx],
+  var sampleVals = sample.split(':'),
+      parsedSample = {};
+  for (var idx = 0; idx < sampleVals.length; idx++) {
+    var val = sampleVals[idx],
+        key = format[idx],
         headerSpec,
         type;
 
     // The below is a massive optimization for:
-    // headerSpec = U.findWhere(header.FORMAT, {ID: key})
+    // headerSpec = _.findWhere(header.FORMAT, {ID: key})
     var hspec, hfmt = header.FORMAT;
     for(var fi = 0; fi < hfmt.length; fi++) {
       hspec = hfmt[fi];
@@ -229,19 +237,14 @@ function _parseSample(sample, format, header) {
 
     if (headerSpec && headerSpec.Type) {
       type = headerSpec.Type;
-      val = HEADER_TYPES[type](val);
     } else {
-      // No type defined in header: we'll try to derive it & fall back to String
       type = deriveType(val);
-      val = HEADER_TYPES[type](val);
-      if (WARN) {
-        console.warn("INFO type '" + key + "' is not defined in header. (Value = '" + val + "'). Derived type as '" + type + "'.");
-      }
+      if (WARN) console.warn("INFO type '" + key + "' is not defined in header. (Value = '" + val + "'). Derived type as '" + type + "'.");
     }
-
-    sample[key] = val;
-    return sample;
-  }, {});
+    val = HEADER_TYPES[type](val);
+    parsedSample[key] = val;
+  }
+  return parsedSample;
 }
 
 function _genKey(record) {
@@ -275,44 +278,43 @@ function parser() {
    // Below: initializing Records and parsing their constituent data.  //
   //////////////////////////////////////////////////////////////////////
 
-  function initializeRecord(vals, header) {
-    return U.reduce(header.columns, function(record, colname, idx) {
-      // null if val is '.' (VCF null string type), else the trimmed value.
-      var val = vals[idx] ? vals[idx].trim() : null;
-      record[colname] = val === '.' ? null : val;
-      return record;
-    }, {__HEADER__: header});
-  }
-
   function Record(line, header) {
     // Returns a VCF record.
     //
     // `line` - a line of the VCF file that represents an individual record.
     // `header` - the parsed VCF header.
     var vals = line.split('\t');
-    var initVals = initializeRecord(vals, header);
-    for (var k in initVals) {
-      this[k] = initVals[k];
-    }
+    this.initializeRecord(vals, header);
 
-    if (this.CHROM)   this.CHROM = parseChrom(this.CHROM, header);
-    if (this.POS)     this.POS = parsePos(this.POS, header);
-    if (this.ID)      this.ID = parseId(this.ID, header);
-    if (this.REF)     this.REF = parseRef(this.REF, header);
-    if (this.ALT)     this.ALT = parseAlt(this.ALT, header);
-    if (this.QUAL)    this.QUAL = parseQual(this.QUAL, header);
-    if (this.FILTER)  this.FILTER = parseFilter(this.FILTER, header);
-    if (this.INFO)    this.INFO = parseInfo(this.INFO, header);
-    if (this.FORMAT)  this.FORMAT = parseFormat(this.FORMAT, header);
+    if (this.CHROM)   this.CHROM   = parseChrom(this.CHROM, header);
+    if (this.POS)     this.POS     = parsePos(this.POS, header);
+    if (this.ID)      this.ID      = parseId(this.ID, header);
+    if (this.REF)     this.REF     = parseRef(this.REF, header);
+    if (this.ALT)     this.ALT     = parseAlt(this.ALT, header);
+    if (this.QUAL)    this.QUAL    = parseQual(this.QUAL, header);
+    if (this.FILTER)  this.FILTER  = parseFilter(this.FILTER, header);
+    if (this.INFO)    this.INFO    = parseInfo(this.INFO, header);
+    if (this.FORMAT)  this.FORMAT  = parseFormat(this.FORMAT, header);
     this.__KEY__ = genKey(this, header);
 
-    U.each(header.sampleNames, function(sampleName) {
-      var sample = this[sampleName];
+    for (var idx = 0; idx < header.sampleNames.length; idx++) {
+      var sampleName = header.sampleNames[idx],
+          sample = this[sampleName];
       if (sample) {
         this[sampleName] = parseSample(sample, this.FORMAT, header);
       }
-    }.bind(this));
+    }
   }
+
+  Record.prototype.initializeRecord = function(vals, header) {
+    this.__HEADER__ = header;
+    for (var idx = 0; idx < header.columns.length; idx++) {
+      var colname = header.columns[idx],
+          val = vals[idx].trim();
+      if (!val || val === '.') val = null;
+      this[colname] = val;
+    }
+  };
 
   Record.prototype.variantType = function() {
     if (this.isSnv()) return 'SNV';

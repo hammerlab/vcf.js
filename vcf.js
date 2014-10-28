@@ -1,5 +1,5 @@
 (function(root) {
-"use strict";
+'use strict';
 
 var U;
 if (typeof _ === 'function') {
@@ -33,7 +33,7 @@ var WARN = false;
 function maybeMapOverVal(fn, val) {
   var vals = val.split(',');
   if (vals.length > 1) {
-    return U.map(vals, function(v) { return v == '.' ? null : fn(v); });
+    return vals.map(function(v) { return v == '.' ? null : fn(v); });
   }
   return val == '.' ? null : fn(val);
 }
@@ -52,22 +52,15 @@ var HEADER_TYPES = {'Integer': U.partial(maybeMapOverVal, _parseInt),
                     'String': function(v) { return v == '.' ? null : v; }};
 
 function deriveType(val) {
-  // Returns the derived type, falling back to String if nothing else works.
-  //
-  // Attempts to guess the type of a value when the type isn't specicifed in
-  // the header. NB: Currently the only numeric type returned is Float (not
-  // Integer).
-
-  // TODO(ihodes): Derive Integer type separately from Float.
-  var type;
+  // Returns the derived type, Flag or Float, falling back to String if nothing
+  // else works. Used when the type isn't specified in the header.
   if (!val || val.length === 0) {
-    type = 'Flag';
+    return 'Flag';
   } else if (!U.isNaN(parseFloat(val))) {
-    type = 'Float';
+    return 'Float';
   } else {
-    type = 'String';
+    return 'String';
   }
-  return type;
 }
 
 
@@ -145,7 +138,7 @@ function parseVCFVersion(headers) {
   // Returns the version of the VCF file. Hacky.
   var version = headers[0].split('=')[1];
   if (!U.contains(ALLOWED_VERSIONS, version)) {
-    throw new Error("VCF Version Error: version must be 4.2, 4.1, or 4.0.");
+    throw new Error("Invalid VCF File: version must be 4.2, 4.1, or 4.0.");
   }
   return '4.1';
 }

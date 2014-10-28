@@ -22,9 +22,11 @@
                            return 'chr' + chr;
                          });
          window.data = parser(request.responseText);
-         console.log("...finished parsing " + data.records.length + " records in " + (new Date() - start) + "ms.");
+         var totalTime = new Date() - start;
+         console.log("...finished parsing " + data.records.length + " records in " + totalTime + "ms.");
          console.log("");
          console.log("%cVCF data can now be found in window.data", "color:orange;");
+         document.body.innerHTML = 'Finished parsing ' + data.records.length + ' records in ' + totalTime + 'ms.';
        }
      };
     </script>

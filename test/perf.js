@@ -1,5 +1,6 @@
 var assert = require("assert"),
     fs = require("fs"),
+    _ = require("underscore"),
     vcf = require("../vcf.js"),
     Benchmark = require('benchmark');
 
@@ -18,4 +19,4 @@ suite
 .on('complete', function() {
   console.log('Fastest is ' + this.filter('fastest').pluck('name'));
 })
-.run({ 'async': true });
+.run({'async': true});

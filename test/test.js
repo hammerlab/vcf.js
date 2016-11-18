@@ -25,6 +25,20 @@ describe('VCF.js', function() {
       }
       assert(!failed && data.records.length == 10);
     });
+    it('should parse VCF files containing PEDIGREE headers', function() {
+      var failed = false,
+          data = [];
+      try {
+        data = vcf.parser()(String(fs.readFileSync('test/data/snv.vcf')));
+      } catch (e) {
+        failed = true;
+      }
+      assert(!failed)
+      assert(data.records.length == 10);
+      assert(data.header.PEDIGREE);
+      assert(data.header.PEDIGREE[0].Father === 'FatherId');
+      assert(data.header.PEDIGREE[0].Mother === 'MotherId');
+    });
     it('should throw on parsing a VCF of unrecognized version', function() {
       var failed = false;
       try {

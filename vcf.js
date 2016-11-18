@@ -85,12 +85,13 @@ function parseHeader(headers) {
   header.sampleNames = header.columns.slice(NUM_STANDARD_HEADER_COLUMNS);
 
   // TODO(ihodes): parse other, less frequently used, header lines like
-  //               'assembly', 'contig', 'PEDIGREE'
+  //               'assembly', 'contig'
   header.VERSION = parseVCFVersion(headers);
   header.ALT = parseHeadersOf('ALT', headers);
   header.INFO = parseHeadersOf('INFO', headers);
   header.FORMAT = parseHeadersOf('FORMAT', headers);
   header.SAMPL = parseHeadersOf('SAMPLE', headers);
+  header.PEDIGREE = parseHeadersOf('PEDIGREE', headers);
 
   return header;
 }
@@ -110,7 +111,11 @@ function parseHeaderLines(lines) {
     var specRe = /<(.*)>/,
         descriptionRe = /.*?(Description="(.*?)",?).*?/,
         spec = specRe.exec(line)[1],
-        description = descriptionRe.exec(spec)[2];
+        descriptionExec = descriptionRe.exec(spec)
+          
+    if (descriptionExec) {
+      var description = descriptionExec[2];
+    }
 
     spec = spec.replace(/Description=".*?",?/, '');
 

@@ -1,6 +1,6 @@
 {
   "name": "vcf.js",
-  "version": "0.2.9",
+  "version": "0.3.0",
   "description": "A VCF parser, for the browser & node.",
   "main": "vcf.js",
   "directories": {

@@ -85,13 +85,14 @@ function parseHeader(headers) {
   header.sampleNames = header.columns.slice(NUM_STANDARD_HEADER_COLUMNS);
 
   // TODO(ihodes): parse other, less frequently used, header lines like
-  //               'assembly', 'contig'
+  //               'assembly'
   header.VERSION = parseVCFVersion(headers);
   header.ALT = parseHeadersOf('ALT', headers);
   header.INFO = parseHeadersOf('INFO', headers);
   header.FORMAT = parseHeadersOf('FORMAT', headers);
   header.SAMPL = parseHeadersOf('SAMPLE', headers);
   header.PEDIGREE = parseHeadersOf('PEDIGREE', headers);
+  header.contig = parseHeadersOf('contig', headers);
 
   return header;
 }
